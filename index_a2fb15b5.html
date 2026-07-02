@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OPTI Controller">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0a14">
+<meta name="format-detection" content="telephone=no">
+<title>OPTI - لوحة التحكم</title>
+<link rel="apple-touch-icon" href="img/logo.png">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #0a0a14;
+  color: #e5e7eb;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+body { display: flex; flex-direction: column; align-items: center; padding-bottom: 80px; }
+
+/* iOS Safe Area Support for iPhone X and later */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Header with iOS safe area */
+.header {
+  padding-top: calc(18px + env(safe-area-inset-top));
+}
+
+/* Prevent iOS zoom on input focus */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* iOS tap highlight */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Header */
+.header {
+  width: 100%;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #0f0f1e, #1a1a2e);
+  border-bottom: 1px solid rgba(59,130,246,0.2);
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header h1 {
+  font-size: 22px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 2px;
+}
+.header .subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.logout-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 8px;
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 101;
+}
+.logout-btn:active {
+  background: rgba(220, 38, 38, 0.3);
+  transform: scale(0.95);
+}
+
+/* Connection Status */
+.conn-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  width: calc(100% - 32px);
+}
+.conn-status.waiting {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+.conn-status.connected {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+.conn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Settings Panel */
+.settings-panel {
+  width: calc(100% - 32px);
+  margin: 0 16px 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 12px;
+}
+.settings-panel h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 12px;
+}
+.settings-panel label {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+.settings-panel input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 8px;
+  font-size: 16px;
+  background: rgba(15,15,30,0.8);
+  color: #e5e7eb;
+  outline: none;
+  margin-bottom: 12px;
+}
+.settings-panel button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Main Content */
+.main-content {
+  width: calc(100% - 32px);
+  margin: 0 16px;
+  display: none;
+}
+
+/* Menu Grid */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.menu-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 10px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  color: #e5e7eb;
+}
+.menu-btn:active {
+  transform: scale(0.95);
+  border-color: rgba(59,130,246,0.5);
+}
+.menu-btn .icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+.menu-btn .label {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Page Container */
+.page {
+  display: none;
+}
+.page.active {
+  display: block;
+}
+
+/* Back Button */
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(59,130,246,0.1);
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 10px;
+  color: #4facfe;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 16px;
+  width: fit-content;
+}
+
+/* Card */
+.card {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4facfe;
+  margin-bottom: 12px;
+}
+
+/* Input */
+.input-group {
+  margin-bottom: 12px;
+}
+.input-group label {
+  display: block;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.input-group input, .input-group textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 8px;
+  font-size: 16px;
+  background: rgba(15,15,30,0.8);
+  color: #e5e7eb;
+  outline: none;
+}
+.input-group input:focus {
+  border-color: #4facfe;
+}
+.input-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Button */
+.btn {
+  padding: 14px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 10px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+}
+.btn-success {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #fff;
+}
+.btn-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+.btn-danger {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  color: #fff;
+}
+
+/* Quantity Row */
+.qty-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+}
+.qty-btn {
+  width: 44px;
+  height: 44px;
+  background: rgba(59,130,246,0.15);
+  border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 10px;
+  color: #4facfe;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.qty-input {
+  width: 80px;
+  text-align: center;
+  padding: 10px;
+  background: rgba(15,15,30,0.8);
+  border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 8px;
+  color: #4facfe;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* List */
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: rgba(15,15,30,0.5);
+  border: 1px solid rgba(59,130,246,0.1);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.list-item-info {
+  flex: 1;
+}
+.list-item-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+.list-item-detail {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+.list-item-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4facfe;
+}
+
+/* Stats */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.stat-box {
+  background: rgba(15,15,30,0.5);
+  border: 1px solid rgba(59,130,246,0.1);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #4facfe;
+  margin-bottom: 4px;
+}
+.stat-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Empty State */
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #475569;
+}
+.empty .icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  background: rgba(0,0,0,0.9);
+  border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 10px;
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+}
+.toast.success {
+  border-color: rgba(16,185,129,0.5);
+  color: #34d399;
+}
+.toast.error {
+  border-color: rgba(220,38,38,0.5);
+  color: #f87171;
+}
+
+/* Search Box */
+.search-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.search-box input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 8px;
+  font-size: 14px;
+  background: rgba(15,15,30,0.8);
+  color: #e5e7eb;
+  outline: none;
+}
+.search-box button {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Alert Badge */
+.alert-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(220,38,38,0.2);
+  border: 1px solid rgba(220,38,38,0.4);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f87171;
+  margin-top: 8px;
+}
+
+/* Scrollable List */
+.scroll-list {
+  max-height: 400px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Barcode Scanner */
+.scanner-container {
+  width: 100%;
+  margin: 16px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+#barcodeReader {
+  width: 100%;
+}
+#barcodeReader__dashboard_section {
+  padding: 10px !important;
+}
+#barcodeReader__dashboard_section_csr button {
+  background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+  color: #fff !important;
+  border: none !important;
+  padding: 10px 20px !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  margin: 5px !important;
+}
+#barcodeReader__dashboard_section_csr select {
+  width: 100% !important;
+  padding: 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(59,130,246,0.3) !important;
+  background: rgba(15,15,30,0.8) !important;
+  color: #e5e7eb !important;
+}
+.scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+.scan-btn:active {
+  transform: scale(0.97);
+}
+.scan-result-box {
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 10px;
+  padding: 14px;
+  margin: 12px 0;
+  text-align: center;
+}
+.scan-result-box .code {
+  font-size: 20px;
+  font-weight: 800;
+  color: #34d399;
+  letter-spacing: 2px;
+}
+.scan-result-box .name {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+/* ============================================
+   LOGIN SCREEN - Exclusive Design
+   ============================================ */
+#loginScreen {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+#matrixCanvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+}
+.login-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%);
+  z-index: 1;
+}
+.login-container {
+  position: relative;
+  z-index: 10;
+  width: 88%;
+  max-width: 380px;
+  padding: 36px 24px 26px;
+  background: rgba(5, 5, 15, 0.92);
+  border-radius: 20px;
+  text-align: center;
+  animation: loginFadeIn 1s ease-out;
+}
+@keyframes loginFadeIn {
+  0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  border-radius: 22px;
+  background: linear-gradient(45deg,
+    #ff0000, #ff7700, #ffff00, #00ff00,
+    #00ffff, #0000ff, #8b00ff, #ff0000,
+    #ff7700, #ffff00, #00ff00, #00ffff);
+  background-size: 400% 400%;
+  animation: rgbBorder 4s linear infinite;
+  z-index: -1;
+  filter: blur(3px);
+}
+.login-container::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 20px;
+  background: rgba(5, 5, 15, 0.95);
+  z-index: -1;
+}
+@keyframes rgbBorder {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.login-glow {
+  position: absolute;
+  top: -40px; left: -40px; right: -40px; bottom: -40px;
+  border-radius: 40px;
+  animation: rgbGlow 3s ease-in-out infinite alternate;
+  z-index: -2;
+  pointer-events: none;
+}
+@keyframes rgbGlow {
+  0% { box-shadow: 0 0 30px rgba(255,0,0,0.2), 0 0 60px rgba(255,0,0,0.1); }
+  33% { box-shadow: 0 0 30px rgba(0,255,0,0.2), 0 0 60px rgba(0,255,0,0.1); }
+  66% { box-shadow: 0 0 30px rgba(0,100,255,0.2), 0 0 60px rgba(0,100,255,0.1); }
+  100% { box-shadow: 0 0 30px rgba(255,0,255,0.2), 0 0 60px rgba(255,0,255,0.1); }
+}
+.login-logo {
+  font-size: 48px;
+  margin-bottom: 6px;
+  animation: logoPulse 2s ease-in-out infinite;
+}
+@keyframes logoPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255,0,0,0.5)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 25px rgba(0,255,0,0.6)); }
+}
+.login-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  margin-bottom: 4px;
+  background: linear-gradient(90deg, #ff0040, #ff0000, #ff4444, #ff0040);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rgbText 3s linear infinite;
+}
+@keyframes rgbText {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+.login-subtitle {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 28px;
+  letter-spacing: 1px;
+}
+.login-input-group {
+  position: relative;
+  margin-bottom: 16px;
+}
+.login-input-group .input-icon {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  opacity: 0.5;
+  z-index: 2;
+}
+.login-input {
+  width: 100%;
+  padding: 14px 46px 14px 14px;
+  background: rgba(20, 0, 0, 0.6);
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  border-radius: 12px;
+  color: #ff4444;
+  font-size: 16px;
+  outline: none;
+  transition: all 0.3s;
+  direction: rtl;
+}
+.login-input::placeholder {
+  color: rgba(255, 68, 68, 0.3);
+}
+.login-input:focus {
+  border-color: #ff0000;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.2), inset 0 0 20px rgba(255, 0, 0, 0.05);
+  background: rgba(30, 0, 0, 0.8);
+}
+.login-btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #8b0000, #cc0000, #ff0000, #cc0000, #8b0000);
+  background-size: 300% 300%;
+  animation: rgbBtnBg 3s ease infinite;
+  letter-spacing: 2px;
+  margin-top: 6px;
+  transition: all 0.3s;
+}
+@keyframes rgbBtnBg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.login-btn:active { transform: scale(0.96); }
+.login-btn::before {
+  content: '';
+  position: absolute;
+  top: -2px; left: -100%;
+  width: 60%;
+  height: calc(100% + 4px);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  animation: btnShine 3s ease-in-out infinite;
+}
+@keyframes btnShine {
+  0% { left: -100%; }
+  50%, 100% { left: 150%; }
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 16px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,0,0,0.3), transparent);
+}
+.login-divider span {
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+}
+.login-credits {
+  margin-top: 0;
+  padding: 14px;
+  background: rgba(255, 0, 0, 0.03);
+  border: 1px solid rgba(255, 0, 0, 0.1);
+  border-radius: 12px;
+}
+.login-credits .dev-name {
+  font-size: 14px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #ff0040, #ff6600, #ffcc00, #00ff66, #0066ff, #cc00ff, #ff0040);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rgbText 4s linear infinite;
+  margin-bottom: 4px;
+}
+.login-credits .dev-label {
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 8px;
+}
+.login-credits .contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: rgba(255, 0, 0, 0.06);
+  border: 1px solid rgba(255, 0, 0, 0.15);
+  border-radius: 8px;
+  direction: ltr;
+}
+.login-credits .contact-row span {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff4444;
+  letter-spacing: 1.5px;
+  font-family: 'Courier New', monospace;
+}
+.scanlines {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg,
+    rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px,
+    transparent 1px, transparent 3px);
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+.login-shake { animation: shake 0.5s ease-in-out; }
+body.app-locked .header,
+body.app-locked .conn-status,
+body.app-locked .settings-panel,
+body.app-locked .main-content,
+body.app-locked .toast {
+  display: none !important;
+}
+
+/* App background matrix rain */
+#appMatrixBg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.08;
+}
+body:not(.app-locked) {
+  position: relative;
+}
+body:not(.app-locked) > *:not(#appMatrixBg):not(#loginScreen) {
+  position: relative;
+  z-index: 1;
+}
+</style>
+</head>
+<body class="app-locked">
+
+<!-- ============================================
+     LOGIN SCREEN
+     ============================================ -->
+<div id="loginScreen">
+  <canvas id="matrixCanvas"></canvas>
+  <div class="login-overlay"></div>
+  <div class="scanlines"></div>
+  
+  <div class="login-container">
+    <div class="login-glow"></div>
+    
+    <div class="login-logo">🔐</div>
+    <div class="login-title">OPTI</div>
+    <div class="login-subtitle">لوحة التحكم الحصرية</div>
+    
+    <div class="login-input-group">
+      <span class="input-icon">👤</span>
+      <input type="text" class="login-input" id="loginUser" placeholder="اسم المستخدم" autocomplete="off" />
+    </div>
+    
+    <div class="login-input-group">
+      <span class="input-icon">🔑</span>
+      <input type="password" class="login-input" id="loginPass" placeholder="كلمة المرور" autocomplete="off" />
+    </div>
+    
+    <button class="login-btn" onclick="attemptLogin()">دخـــول</button>
+    
+    <div class="login-divider">
+      <span>تم التطوير بواسطة</span>
+    </div>
+    
+    <div class="login-credits">
+      <div class="dev-name">موسى البهادلي</div>
+      <div class="dev-label">للاستفسار</div>
+      <div class="contact-row">
+        <span class="contact-icon">📞</span>
+        <span>07734340816</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- App background matrix rain -->
+<canvas id="appMatrixBg"></canvas>
+
+<!-- Header -->
+<div class="header">
+  <h1>OPTI</h1>
+  <div class="subtitle">لوحة التحكم عن بعد</div>
+  <button class="logout-btn" id="logoutBtn" onclick="logoutSession()" style="display:none;">
+    <span>🚪</span> تسجيل خروج
+  </button>
+</div>
+
+<!-- Connection Status -->
+<div class="conn-status waiting" id="connStatus">
+  <span class="conn-dot"></span>
+  <span id="connText">في انتظار الاتصال...</span>
+</div>
+
+<!-- Settings Panel -->
+<div class="settings-panel" id="settingsPanel">
+  <h3>إعدادات الاتصال</h3>
+  <label>كود الاتصال (من برنامج الفاتورة)</label>
+  <input type="text" id="sessionIdInput" placeholder="أدخل كود الاتصال" />
+  <button onclick="connectWithSession()">اتصال</button>
+</div>
+
+<!-- Main Content -->
+<div class="main-content" id="mainContent">
+
+  <!-- Home Page -->
+  <div class="page active" id="homePage">
+    <div class="menu-grid">
+      <div class="menu-btn" onclick="goToPage('addPage')">
+        <span class="icon">➕</span>
+        <span class="label">إضافة صنف</span>
+      </div>
+      <div class="menu-btn" onclick="goToPage('searchPage')">
+        <span class="icon">🔍</span>
+        <span class="label">بحث عن منتج</span>
+      </div>
+      <div class="menu-btn" onclick="goToPage('stockPage')">
+        <span class="icon">📦</span>
+        <span class="label">المخزون</span>
+      </div>
+      <div class="menu-btn" onclick="goToPage('lowStockPage')">
+        <span class="icon">⚠️</span>
+        <span class="label">مخزون منخفض</span>
+      </div>
+      <div class="menu-btn" onclick="goToPage('pricePage')">
+        <span class="icon">💰</span>
+        <span class="label">تعديل سعر</span>
+      </div>
+      <div class="menu-btn" onclick="goToPage('invoicesPage')">
+        <span class="icon">🧾</span>
+        <span class="label">الفواتير</span>
+      </div>
+      <div class="menu-btn" onclick="goToPage('reportPage')">
+        <span class="icon">📊</span>
+        <span class="label">تقرير يومي</span>
+      </div>
+      <div class="menu-btn" onclick="goToPage('invoiceCtrlPage')">
+        <span class="icon">🎛️</span>
+        <span class="label">التحكم بالفاتورة</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Product Page -->
+  <div class="page" id="addPage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>➕ إضافة صنف جديد</h3>
+      <div class="input-group">
+        <label>كود الصنف</label>
+        <input type="text" id="addCode" placeholder="أدخل الكود" />
+      </div>
+      <div class="input-group">
+        <label>اسم الصنف</label>
+        <input type="text" id="addName" placeholder="أدخل الاسم" />
+      </div>
+      <div class="input-group">
+        <label>السعر</label>
+        <input type="number" id="addPrice" placeholder="0" min="0" />
+      </div>
+      <div class="input-group">
+        <label>الكمية</label>
+        <input type="number" id="addQty" value="1" min="1" />
+      </div>
+      <button class="btn btn-success" onclick="addProduct()">إضافة</button>
+    </div>
+  </div>
+
+  <!-- Search Page -->
+  <div class="page" id="searchPage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>🔍 بحث عن منتج</h3>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="كود أو اسم الصنف" />
+        <button onclick="searchProduct()">بحث</button>
+      </div>
+      <div id="searchResults"></div>
+    </div>
+  </div>
+
+  <!-- Stock Page -->
+  <div class="page" id="stockPage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>📦 المخزون</h3>
+      <div class="search-box">
+        <input type="text" id="stockSearch" placeholder="بحث..." oninput="filterStock()" />
+      </div>
+      <div class="scroll-list" id="stockList"></div>
+    </div>
+  </div>
+
+  <!-- Low Stock Page -->
+  <div class="page" id="lowStockPage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>⚠️ أصناف المخزون المنخفض</h3>
+      <div id="lowStockList"></div>
+    </div>
+  </div>
+
+  <!-- Price Edit Page -->
+  <div class="page" id="pricePage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>💰 تعديل سعر صنف</h3>
+      <div class="search-box">
+        <input type="text" id="priceSearch" placeholder="كود الصنف" />
+        <button onclick="searchForPrice()">بحث</button>
+      </div>
+      <div id="priceSearchResult"></div>
+    </div>
+  </div>
+
+  <!-- Invoices Page -->
+  <div class="page" id="invoicesPage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>🧾 آخر الفواتير</h3>
+      <div class="search-box">
+        <input type="text" id="invoiceSearch" placeholder="رقم أو اسم الزبون" />
+        <button onclick="searchInvoices()">بحث</button>
+      </div>
+      <div class="scroll-list" id="invoiceList"></div>
+    </div>
+  </div>
+
+  <!-- Report Page -->
+  <div class="page" id="reportPage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>📊 تقرير اليوم</h3>
+      <button class="btn btn-primary" onclick="loadReport()">تحديث التقرير</button>
+      <div id="reportContent"></div>
+    </div>
+  </div>
+
+  <!-- Invoice Control Page -->
+  <div class="page" id="invoiceCtrlPage">
+    <div class="back-btn" onclick="goToPage('homePage')">← رجوع</div>
+    <div class="card">
+      <h3>🎛️ التحكم بالفاتورة الحالية</h3>
+      
+      <!-- Barcode Scanner Section -->
+      <button class="scan-btn" onclick="toggleScanner()">📷 ماسح الباركود</button>
+      <div class="scanner-container" id="scannerContainer" style="display:none;">
+        <div id="barcodeReader"></div>
+      </div>
+      <div class="scan-result-box" id="scanResultBox" style="display:none;">
+        <div class="code" id="scannedCode"></div>
+        <div class="name" id="scannedName"></div>
+      </div>
+      
+      <!-- Quantity Prompt Modal for Barcode Scan -->
+      <div id="scanQtyModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.85); z-index:99999; align-items:center; justify-content:center;">
+        <div style="background:#1a1a2e; border:2px solid #3b82f6; border-radius:16px; padding:30px; max-width:350px; width:90%; text-align:center; box-shadow:0 0 40px rgba(59,130,246,0.4);">
+          <h3 style="color:#fff; margin-bottom:8px; font-size:18px;">تم مسح الباركود</h3>
+          <div id="scanQtyProductName" style="color:#60a5fa; font-size:16px; margin-bottom:16px; font-weight:700;"></div>
+          <div id="scanQtyCode" style="color:#94a3b8; font-size:13px; margin-bottom:16px;"></div>
+          <label style="color:#e5e7eb; font-size:14px; display:block; margin-bottom:8px;">الكمية / العدد</label>
+          <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:20px;">
+            <button onclick="document.getElementById('scanQtyInput').value=Math.max(1,parseInt(document.getElementById('scanQtyInput').value||1)-1)" style="width:44px; height:44px; border-radius:50%; background:#3b82f6; color:#fff; border:none; font-size:22px; font-weight:900; cursor:pointer;">-</button>
+            <input type="number" id="scanQtyInput" value="1" min="1" style="width:80px; text-align:center; padding:10px; border:2px solid #3b82f6; border-radius:8px; font-size:20px; font-weight:800; background:#0a0a14; color:#fff;" />
+            <button onclick="document.getElementById('scanQtyInput').value=(parseInt(document.getElementById('scanQtyInput').value||0)+1)" style="width:44px; height:44px; border-radius:50%; background:#3b82f6; color:#fff; border:none; font-size:22px; font-weight:900; cursor:pointer;">+</button>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button id="scanQtyAddBtn" onclick="confirmScanAdd()" style="flex:1; padding:12px; background:linear-gradient(135deg,#16a34a,#22c55e); color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:800; cursor:pointer;">اضافة</button>
+            <button onclick="cancelScanAdd()" style="flex:1; padding:12px; background:#dc2626; color:#fff; border:none; border-radius:8px; font-size:16px; font-weight:800; cursor:pointer;">الغاء</button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <label>كود الصنف</label>
+        <input type="text" id="ctrlCode" placeholder="أدخل الكود أو امسحه" />
+      </div>
+      <div class="input-group">
+        <label>الكمية</label>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="decQty('ctrlQty')">−</button>
+          <input type="number" class="qty-input" id="ctrlQty" value="1" min="0" />
+          <button class="qty-btn" onclick="incQty('ctrlQty')">+</button>
+        </div>
+      </div>
+      <button class="btn btn-success" onclick="addToInvoice()">إضافة للفاتورة</button>
+      <button class="btn btn-danger" onclick="removeFromInvoice()">حذف من الفاتورة</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+<!-- Matrix Rain + Login Script -->
+<script>
+// ============================================
+// Matrix Rain Effect (Red Characters)
+// ============================================
+(function() {
+  var canvas = document.getElementById('matrixCanvas');
+  var ctx = canvas.getContext('2d');
+  var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz@#$%&*()+=<>?!';
+  var fontSize = 14;
+  var columns, drops;
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    columns = Math.floor(canvas.width / fontSize);
+    drops = [];
+    for (var i = 0; i < columns; i++) {
+      drops[i] = Math.random() * -100;
+    }
+  }
+
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.06)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (var i = 0; i < columns; i++) {
+      var char = chars[Math.floor(Math.random() * chars.length)];
+      var x = i * fontSize;
+      var y = drops[i] * fontSize;
+
+      // Bright head
+      var brightness = Math.random();
+      if (brightness > 0.95) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 15;
+      } else if (brightness > 0.8) {
+        ctx.fillStyle = '#ff3333';
+        ctx.shadowColor = '#ff0000';
+        ctx.shadowBlur = 8;
+      } else {
+        var r = Math.floor(Math.random() * 100) + 155;
+        ctx.fillStyle = 'rgb(' + r + ',0,0)';
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.font = fontSize + 'px monospace';
+      ctx.fillText(char, x, y);
+      ctx.shadowBlur = 0;
+
+      if (y > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  setInterval(drawMatrix, 45);
+})();
+
+// ============================================
+// Login Logic
+// ============================================
+var LOGIN_CREDENTIALS = {
+  username: '2',
+  password: '2'
+};
+
+function attemptLogin() {
+  var user = document.getElementById('loginUser').value.trim();
+  var pass = document.getElementById('loginPass').value.trim();
+  var container = document.querySelector('.login-container');
+
+  if (!user || !pass) {
+    container.classList.remove('login-shake');
+    void container.offsetWidth;
+    container.classList.add('login-shake');
+    return;
+  }
+
+  if (user === LOGIN_CREDENTIALS.username && pass === LOGIN_CREDENTIALS.password) {
+    // Success - fade out login screen
+    var loginScreen = document.getElementById('loginScreen');
+    loginScreen.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+    loginScreen.style.opacity = '0';
+    loginScreen.style.transform = 'scale(1.05)';
+
+    setTimeout(function() {
+      loginScreen.style.display = 'none';
+      document.body.classList.remove('app-locked');
+    }, 800);
+  } else {
+    container.classList.remove('login-shake');
+    void container.offsetWidth;
+    container.classList.add('login-shake');
+    
+    // Flash red on inputs
+    var inputs = document.querySelectorAll('.login-input');
+    inputs.forEach(function(inp) {
+      inp.style.borderColor = '#ff0000';
+      inp.style.boxShadow = '0 0 20px rgba(255,0,0,0.4)';
+      setTimeout(function() {
+        inp.style.borderColor = 'rgba(255,0,0,0.2)';
+        inp.style.boxShadow = 'none';
+      }, 1000);
+    });
+  }
+}
+
+// Enter key to login
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.getElementById('loginScreen').style.display !== 'none') {
+    attemptLogin();
+  }
+});
+
+// ============================================
+// App Background Matrix Rain (subtle)
+// ============================================
+(function() {
+  var canvas = document.getElementById('appMatrixBg');
+  var ctx = canvas.getContext('2d');
+  var chars = '0123456789ABCDEFabcdef@#$%&';
+  var fontSize = 12;
+  var columns, drops;
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    columns = Math.floor(canvas.width / fontSize);
+    drops = [];
+    for (var i = 0; i < columns; i++) {
+      drops[i] = Math.random() * -80;
+    }
+  }
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (var i = 0; i < columns; i++) {
+      var char = chars[Math.floor(Math.random() * chars.length)];
+      var x = i * fontSize;
+      var y = drops[i] * fontSize;
+      var r = Math.floor(Math.random() * 80) + 175;
+      ctx.fillStyle = 'rgb(' + r + ',0,0)';
+      ctx.font = fontSize + 'px monospace';
+      ctx.fillText(char, x, y);
+
+      if (y > canvas.height && Math.random() > 0.98) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  setInterval(draw, 60);
+})();
+</script>
+
+<script>
+// ============================================
+// Firebase Configuration
+// ============================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBHcWxIg1RSBxfeJ-QB-sy2k2PFUkoLetQ",
+  authDomain: "opti-mangment.firebaseapp.com",
+  databaseURL: "https://opti-mangment-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "opti-mangment",
+  storageBucket: "opti-mangment.firebasestorage.app",
+  messagingSenderId: "595339139194",
+  appId: "1:595339139194:web:381c3b7cc7ecc1091a43c3"
+};
+
+// ============================================
+// State
+// ============================================
+let db = null;
+let sessionId = null;
+let products = [];
+
+// ============================================
+// Initialize
+// ============================================
+function initFirebase() {
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.database();
+    return true;
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    return false;
+  }
+}
+
+// ============================================
+// Connection
+// ============================================
+function connectWithSession() {
+  const sid = document.getElementById('sessionIdInput').value.trim();
+  if (!sid) {
+    showToast('يرجى إدخال معرف الجلسة', 'error');
+    return;
+  }
+  sessionId = sid;
+  localStorage.setItem('opti_session', sid);
+  
+  if (db) {
+    db.ref('scanner_sessions/' + sessionId).set({
+      createdAt: Date.now(),
+      status: 'active'
+    }).then(() => {
+      onConnected();
+      loadProducts();
+    }).catch(() => {
+      onConnected();
+      loadProducts();
+    });
+  } else {
+    showToast('فشل الاتصال', 'error');
+  }
+}
+
+function onConnected() {
+  document.getElementById('connStatus').className = 'conn-status connected';
+  document.getElementById('connText').textContent = 'متصل ✓';
+  document.getElementById('settingsPanel').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+  document.getElementById('logoutBtn').style.display = 'flex';
+}
+
+function logoutSession() {
+  if (!confirm('هل تريد تسجيل الخروج؟')) return;
+  if (db && sessionId) {
+    db.ref('scanner_sessions/' + sessionId + '/status').set('disconnected').catch(function(){});
+  }
+  sessionId = null;
+  localStorage.removeItem('opti_session');
+  document.getElementById('connStatus').className = 'conn-status waiting';
+  document.getElementById('connText').textContent = 'في انتظار الاتصال...';
+  document.getElementById('settingsPanel').style.display = 'block';
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  showToast('تم تسجيل الخروج', 'success');
+}
+
+// ============================================
+// Navigation
+// ============================================
+function goToPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  
+  // Load data when navigating
+  if (pageId === 'stockPage') loadStock();
+  if (pageId === 'lowStockPage') loadLowStock();
+  if (pageId === 'reportPage') loadReport();
+  if (pageId === 'invoicesPage') loadInvoices();
+}
+
+// ============================================
+// Data Loading
+// ============================================
+function loadProducts() {
+  sendCommand('getProducts', {}, (data) => {
+    if (data && data.products) {
+      products = data.products;
+    }
+  });
+}
+
+function loadStock() {
+  const list = document.getElementById('stockList');
+  const search = document.getElementById('stockSearch').value.toLowerCase();
+  
+  const filtered = products.filter(p => 
+    p.code.toLowerCase().includes(search) || 
+    p.name.toLowerCase().includes(search)
+  );
+  
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="icon">📦</div><div>لا توجد منتجات</div></div>';
+    return;
+  }
+  
+  list.innerHTML = filtered.map(p => `
+    <div class="list-item">
+      <div class="list-item-info">
+        <div class="list-item-name">${p.name}</div>
+        <div class="list-item-detail">الكود: ${p.code}</div>
+      </div>
+      <div class="list-item-value">${p.stock || 0}</div>
+    </div>
+  `).join('');
+}
+
+function filterStock() {
+  loadStock();
+}
+
+function loadLowStock() {
+  const list = document.getElementById('lowStockList');
+  const threshold = 5;
+  
+  const lowStock = products.filter(p => (p.stock || 0) <= threshold);
+  
+  if (lowStock.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="icon">✅</div><div>جميع الأصناف متوفرة</div></div>';
+    return;
+  }
+  
+  list.innerHTML = lowStock.map(p => `
+    <div class="list-item">
+      <div class="list-item-info">
+        <div class="list-item-name">${p.name}</div>
+        <div class="list-item-detail">الكود: ${p.code}</div>
+        <div class="alert-badge">مخزون منخفض</div>
+      </div>
+      <div class="list-item-value" style="color:#f87171;">${p.stock || 0}</div>
+    </div>
+  `).join('');
+}
+
+function searchProduct() {
+  const query = document.getElementById('searchInput').value.trim();
+  if (!query) {
+    showToast('أدخل كود أو اسم', 'error');
+    return;
+  }
+  
+  const results = document.getElementById('searchResults');
+  const found = products.filter(p => 
+    p.code.toLowerCase().includes(query.toLowerCase()) ||
+    p.name.toLowerCase().includes(query.toLowerCase())
+  );
+  
+  if (found.length === 0) {
+    results.innerHTML = '<div class="empty"><div class="icon">🔍</div><div>لم يتم العثور على نتائج</div></div>';
+    return;
+  }
+  
+  results.innerHTML = found.map(p => `
+    <div class="list-item">
+      <div class="list-item-info">
+        <div class="list-item-name">${p.name}</div>
+        <div class="list-item-detail">الكود: ${p.code} | المخزون: ${p.stock || 0}</div>
+      </div>
+      <div class="list-item-value">${p.price || 0} د.ع</div>
+    </div>
+  `).join('');
+}
+
+function loadInvoices() {
+  sendCommand('getInvoices', {}, (data) => {
+    const list = document.getElementById('invoiceList');
+    if (!data || !data.invoices || data.invoices.length === 0) {
+      list.innerHTML = '<div class="empty"><div class="icon">🧾</div><div>لا توجد فواتير</div></div>';
+      return;
+    }
+    
+    const invoices = data.invoices.slice(0, 20); // Last 20
+    
+    list.innerHTML = invoices.map(inv => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name">فاتورة #${inv.no}</div>
+          <div class="list-item-detail">${inv.customer || 'بدون اسم'} - ${inv.date || ''}</div>
+        </div>
+        <div class="list-item-value">${inv.total || 0} د.ع</div>
+      </div>
+    `).join('');
+  });
+}
+
+function searchInvoices() {
+  const query = document.getElementById('invoiceSearch').value.trim();
+  if (!query) {
+    loadInvoices();
+    return;
+  }
+  
+  sendCommand('getInvoices', { search: query }, (data) => {
+    const list = document.getElementById('invoiceList');
+    if (!data || !data.invoices || data.invoices.length === 0) {
+      list.innerHTML = '<div class="empty"><div class="icon">🔍</div><div>لا توجد نتائج</div></div>';
+      return;
+    }
+    
+    list.innerHTML = data.invoices.map(inv => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name">فاتورة #${inv.no}</div>
+          <div class="list-item-detail">${inv.customer || 'بدون اسم'} - ${inv.date || ''}</div>
+        </div>
+        <div class="list-item-value">${inv.total || 0} د.ع</div>
+      </div>
+    `).join('');
+  });
+}
+
+function loadReport() {
+  sendCommand('getDailyReport', {}, (data) => {
+    const content = document.getElementById('reportContent');
+    if (!data) {
+      content.innerHTML = '<div class="empty"><div class="icon">📊</div><div>لا توجد بيانات</div></div>';
+      return;
+    }
+    
+    content.innerHTML = `
+      <div class="stat-grid">
+        <div class="stat-box">
+          <div class="stat-value">${data.invoiceCount || 0}</div>
+          <div class="stat-label">عدد الفواتير</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${data.totalSales || 0}</div>
+          <div class="stat-label">إجمالي المبيعات</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${data.itemsSold || 0}</div>
+          <div class="stat-label">الأصناف المباعة</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">${data.profit || 0}</div>
+          <div class="stat-label">الربح</div>
+        </div>
+      </div>
+    `;
+  });
+}
+
+// ============================================
+// Actions
+// ============================================
+function addProduct() {
+  const code = document.getElementById('addCode').value.trim();
+  const name = document.getElementById('addName').value.trim();
+  const price = parseFloat(document.getElementById('addPrice').value) || 0;
+  const qty = parseInt(document.getElementById('addQty').value) || 1;
+  
+  if (!code || !name) {
+    showToast('أدخل الكود والاسم', 'error');
+    return;
+  }
+  
+  sendCommand('addProduct', { code, name, price, qty });
+  
+  // Clear form
+  document.getElementById('addCode').value = '';
+  document.getElementById('addName').value = '';
+  document.getElementById('addPrice').value = '';
+  document.getElementById('addQty').value = '1';
+}
+
+function searchForPrice() {
+  const code = document.getElementById('priceSearch').value.trim();
+  if (!code) {
+    showToast('أدخل كود الصنف', 'error');
+    return;
+  }
+  
+  const product = products.find(p => p.code === code);
+  const result = document.getElementById('priceSearchResult');
+  
+  if (!product) {
+    result.innerHTML = '<div class="empty"><div class="icon">🔍</div><div>لم يتم العثور على الصنف</div></div>';
+    return;
+  }
+  
+  result.innerHTML = `
+    <div class="card" style="margin-top:12px;">
+      <div class="list-item-name">${product.name}</div>
+      <div class="list-item-detail" style="margin:8px 0;">الكود: ${product.code}</div>
+      <div class="input-group">
+        <label>السعر الجديد</label>
+        <input type="number" id="newPrice" value="${product.price || 0}" min="0" />
+      </div>
+      <button class="btn btn-success" onclick="updatePrice('${product.code}')">تحديث السعر</button>
+    </div>
+  `;
+}
+
+function updatePrice(code) {
+  const newPrice = parseFloat(document.getElementById('newPrice').value) || 0;
+  sendCommand('updatePrice', { code, newPrice });
+  document.getElementById('priceSearch').value = '';
+  document.getElementById('priceSearchResult').innerHTML = '';
+}
+
+function addToInvoice() {
+  const code = document.getElementById('ctrlCode').value.trim();
+  const qty = parseInt(document.getElementById('ctrlQty').value) || 1;
+  
+  if (!code) {
+    showToast('أدخل كود الصنف', 'error');
+    return;
+  }
+  
+  sendCommand('addToInvoice', { code, qty });
+  document.getElementById('ctrlCode').value = '';
+  document.getElementById('ctrlQty').value = '1';
+}
+
+function removeFromInvoice() {
+  const code = document.getElementById('ctrlCode').value.trim();
+  
+  if (!code) {
+    showToast('أدخل كود الصنف', 'error');
+    return;
+  }
+  
+  sendCommand('removeFromInvoice', { code });
+  document.getElementById('ctrlCode').value = '';
+}
+
+// ============================================
+// Quantity Controls
+// ============================================
+function incQty(id) {
+  const input = document.getElementById(id);
+  input.value = parseInt(input.value) + 1;
+}
+
+function decQty(id) {
+  const input = document.getElementById(id);
+  const val = parseInt(input.value);
+  if (val > 0) input.value = val - 1;
+}
+
+// ============================================
+// Firebase Commands
+// ============================================
+function sendCommand(action, data, callback) {
+  if (!db || !sessionId) {
+    showToast('غير متصل', 'error');
+    return;
+  }
+  
+  const command = {
+    action: action,
+    data: data,
+    timestamp: Date.now(),
+    status: 'pending'
+  };
+  
+  const ref = db.ref('scanner_sessions/' + sessionId + '/commands').push();
+  ref.set(command);
+  
+  // Listen for response
+  if (callback) {
+    ref.on('value', (snapshot) => {
+      const val = snapshot.val();
+      if (val && val.status === 'completed' && val.response) {
+        callback(val.response);
+        ref.off();
+      }
+    });
+  } else {
+    showToast('تم الإرسال', 'success');
+  }
+}
+
+// ============================================
+// Toast Notification
+// ============================================
+function showToast(message, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'toast ' + type + ' show';
+  
+  setTimeout(() => {
+    toast.className = 'toast';
+  }, 2000);
+}
+
+// ============================================
+// Initialize on Load
+// ============================================
+function initApp() {
+  initFirebase();
+  
+  const savedSession = localStorage.getItem('opti_session');
+  if (savedSession) {
+    document.getElementById('sessionIdInput').value = savedSession;
+  }
+  
+  if (savedSession && db) {
+    sessionId = savedSession;
+    db.ref('scanner_sessions/' + sessionId).once('value').then(snapshot => {
+      if (snapshot.val()) {
+        onConnected();
+        loadProducts();
+      }
+    }).catch(function(){});
+  }
+}
+
+// Initialize app when DOM is ready (web browser version - no Cordova)
+window.addEventListener('DOMContentLoaded', function() {
+  initApp();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if (db && sessionId) {
+    db.ref('scanner_sessions/' + sessionId + '/status').set('disconnected').catch(function(){});
+  }
+  // Stop scanner if active
+  if (html5QrCode && html5QrCode.isScanning) {
+    html5QrCode.stop().catch(() => {});
+  }
+});
+
+// iOS Safari: Pause scanner when page goes to background
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && html5QrCode && html5QrCode.isScanning) {
+    try { html5QrCode.pause(); } catch(e) {}
+  }
+});
+
+// iOS Safari: Handle page show (when returning from background)
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted && html5QrCode && scannerActive) {
+    try { html5QrCode.resume(); } catch(e) {}
+  }
+});
+
+// Search on Enter
+document.getElementById('searchInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    searchProduct();
+  }
+});
+
+// ============================================
+// Barcode Scanner
+// ============================================
+let html5QrCode = null;
+let scannerActive = false;
+
+function toggleScanner() {
+  const container = document.getElementById('scannerContainer');
+  
+  if (scannerActive) {
+    stopScanner();
+    container.style.display = 'none';
+    scannerActive = false;
+  } else {
+    container.style.display = 'block';
+    startScanner();
+    scannerActive = true;
+  }
+}
+
+function startScanner() {
+  if (html5QrCode && html5QrCode.isScanning) return;
+  
+  html5QrCode = new Html5Qrcode("barcodeReader");
+  
+  // Optimized config for iOS Safari and other mobile browsers
+  const config = {
+    fps: 10,
+    qrbox: { width: 250, height: 150 },
+    aspectRatio: 1.333,
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.QR_CODE
+    ]
+  };
+  
+  // iOS Safari requires user gesture for camera - already triggered by button click
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+      // Barcode detected
+      onBarcodeScanned(decodedText);
+      
+      // Vibrate feedback (iOS doesn't support vibrate, but no error thrown)
+      if (navigator.vibrate) {
+        navigator.vibrate(100);
+      }
+    },
+    (errorMessage) => {
+      // Ignore scan errors (happens on every frame without barcode)
+    }
+  ).catch(err => {
+    console.error('Scanner error:', err);
+    // Check if it's a permission error on iOS
+    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+      showToast('يرجى السماح بالوصول للكاميرا من إعدادات المتصفح', 'error');
+    } else if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+      showToast('لا توجد كاميرا متاحة على هذا الجهاز', 'error');
+    } else {
+      showToast('فشل فتح الكاميرا: ' + (err.message || 'خطأ غير معروف'), 'error');
+    }
+  });
+}
+
+function stopScanner() {
+  if (html5QrCode && html5QrCode.isScanning) {
+    html5QrCode.stop().catch(() => {});
+  }
+}
+
+function onBarcodeScanned(code) {
+  // Prevent duplicate scans with cooldown
+  if (window._lastScanCode === code && (Date.now() - window._lastScanTime) < 2000) {
+    return;
+  }
+  window._lastScanCode = code;
+  window._lastScanTime = Date.now();
+  
+  // Fill the code input
+  document.getElementById('ctrlCode').value = code;
+  
+  // Show scan result
+  const resultBox = document.getElementById('scanResultBox');
+  document.getElementById('scannedCode').textContent = code;
+  
+  // Try to find product name
+  const product = products.find(p => p.code === code || p.barcode === code);
+  document.getElementById('scannedName').textContent = product ? product.name : 'صنف غير معروف';
+  
+  resultBox.style.display = 'block';
+  
+  // Show quantity prompt modal
+  const modal = document.getElementById('scanQtyModal');
+  document.getElementById('scanQtyProductName').textContent = product ? product.name : 'صنف غير معروف';
+  document.getElementById('scanQtyCode').textContent = 'الكود: ' + code;
+  document.getElementById('scanQtyInput').value = 1;
+  modal.style.display = 'flex';
+  
+  // Vibrate feedback
+  if (navigator.vibrate) {
+    navigator.vibrate(100);
+  }
+  
+  // Pause scanner while modal is shown
+  if (html5QrCode && html5QrCode.isScanning) {
+    try { html5QrCode.pause(); } catch(e) {}
+  }
+}
+
+function confirmScanAdd() {
+  const modal = document.getElementById('scanQtyModal');
+  const qty = parseInt(document.getElementById('scanQtyInput').value) || 1;
+  
+  // Update the qty input in the main form
+  document.getElementById('ctrlQty').value = qty;
+  
+  // Add to invoice
+  addToInvoice();
+  
+  // Hide modal
+  modal.style.display = 'none';
+  
+  // Hide scan result after a moment
+  setTimeout(() => {
+    document.getElementById('scanResultBox').style.display = 'none';
+  }, 1500);
+  
+  // Resume scanner
+  if (html5QrCode) {
+    try { html5QrCode.resume(); } catch(e) {}
+  }
+}
+
+function cancelScanAdd() {
+  const modal = document.getElementById('scanQtyModal');
+  modal.style.display = 'none';
+  
+  // Clear code input
+  document.getElementById('ctrlCode').value = '';
+  document.getElementById('scanResultBox').style.display = 'none';
+  
+  // Resume scanner
+  if (html5QrCode) {
+    try { html5QrCode.resume(); } catch(e) {}
+  }
+}
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"75124c326cb447fe934cde04713ae013","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"75124c326cb447fe934cde04713ae013","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
